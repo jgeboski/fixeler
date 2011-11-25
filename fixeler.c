@@ -310,7 +310,7 @@ GtkWidget * fixeler_toolbar(Fixeler * fixeler)
     item = gtk_separator_tool_item_new();
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), item, 9);
     
-    combo  = GTK_COMBO_BOX_TEXT(gtk_combo_box_text_new_with_entry());
+    combo  = GTK_COMBO_BOX_TEXT(gtk_combo_box_text_new());
     widget = GTK_WIDGET(combo);
     gtk_combo_box_text_append_text(combo, _("Red, Green, Blue"));
     gtk_combo_box_text_append_text(combo, _("Black, White"));
