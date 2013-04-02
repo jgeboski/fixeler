@@ -395,12 +395,9 @@ void fixeler_window(Fixeler *fixeler)
 
 int main(gint argc, gchar *argv[])
 {
-    Fixeler  *fixeler;
-    GTimeVal  tv;
+    Fixeler *fixeler;
 
     gtk_init(&argc, &argv);
-    g_get_current_time(&tv);
-
     fixeler = g_slice_new0(Fixeler);
 
     fixeler->running   = FALSE;
