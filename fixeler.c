@@ -21,38 +21,39 @@
 
 #include <gtk/gtk.h>
 
-#define FIXELER_UI_TIMEOUT 3000
+#define FIXELER_UI_TIMEOUT  3000
 
-typedef struct _Color
+typedef struct _Color   Color;
+typedef struct _Fixeler Fixeler;
+
+struct _Color
 {
     guint8 r;
     guint8 g;
     guint8 b;
-}
-Color;
+};
 
-typedef struct _Fixeler
+struct _Fixeler
 {
-    gboolean running;
-    GSource * source;
-    guint timeout;
-    gint mode;
+    GSource  *source;
+    gboolean  running;
+    guint     timeout;
+    gint      mode;
 
-    gboolean ui_hidden;
-    GSource * ui_source;
+    gboolean  ui_hidden;
+    GSource  *ui_source;
 
     gint ci;
 
-    GtkWidget * window;
-    GtkWidget * toolbar;
+    GtkWidget *window;
+    GtkWidget *toolbar;
 
-    GtkWidget * modew;
-    GtkWidget * timeoutw;
+    GtkWidget *modew;
+    GtkWidget *timeoutw;
 
-    GtkWidget * start;
-    GtkWidget * stop;
-}
-Fixeler;
+    GtkWidget *start;
+    GtkWidget *stop;
+};
 
 static GdkColor color_rgb[3] = {
     {0, 0xffff, 0, 0},
@@ -66,15 +67,15 @@ static GdkColor color_bw[2] = {
 };
 
 static GdkColor color_rb;
-static Color color;
+static Color    color;
 
 static gboolean fixeler_timeout_rgb(Fixeler * fixeler)
 {
-    if(fixeler->ci >= 3)
+    if (fixeler->ci >= 3)
         fixeler->ci = 0;
 
     gtk_widget_modify_bg(fixeler->window, GTK_STATE_NORMAL,
-        &color_rgb[fixeler->ci]);
+                         &color_rgb[fixeler->ci]);
 
     fixeler->ci++;
     return fixeler->running;
@@ -82,66 +83,66 @@ static gboolean fixeler_timeout_rgb(Fixeler * fixeler)
 
 static gboolean fixeler_timeout_bw(Fixeler * fixeler)
 {
-    if(fixeler->ci >= 2)
+    if (fixeler->ci >= 2)
         fixeler->ci = 0;
 
     gtk_widget_modify_bg(fixeler->window, GTK_STATE_NORMAL,
-        &color_bw[fixeler->ci]);
+                         &color_bw[fixeler->ci]);
 
     fixeler->ci++;
     return fixeler->running;
 }
 
-static gboolean fixeler_timeout_rb(Fixeler * fixeler)
+static gboolean fixeler_timeout_rb(Fixeler *fixeler)
 {
-    if(!fixeler->ci) {
+    if (!fixeler->ci) {
         color_rb.red   = 255;
         color_rb.green = 0;
         color_rb.blue  = 0;
     }
 
-    switch(fixeler->ci) {
-        case 0:
-            if(color.b < 255)
-                color.b++;
-            else
-                fixeler->ci++;
-            break;
+    switch (fixeler->ci) {
+    case 0:
+        if (color.b < 255)
+            color.b++;
+        else
+            fixeler->ci++;
+        break;
 
-        case 1:
-            if(color.r > 0)
-                color.r--;
-            else
-                fixeler->ci++;
-            break;
+    case 1:
+        if (color.r > 0)
+            color.r--;
+        else
+            fixeler->ci++;
+        break;
 
-         case 2:
-            if(color.g < 255)
-                color.g++;
-            else
-                fixeler->ci++;
-            break;
+     case 2:
+        if (color.g < 255)
+            color.g++;
+        else
+            fixeler->ci++;
+        break;
 
-        case 3:
-            if(color.b > 0)
-                color.b--;
-            else
-                fixeler->ci++;
-            break;
+    case 3:
+        if (color.b > 0)
+            color.b--;
+        else
+            fixeler->ci++;
+        break;
 
-        case 4:
-            if(color.r < 255)
-                color.r++;
-            else
-                fixeler->ci++;
-            break;
+    case 4:
+        if (color.r < 255)
+            color.r++;
+        else
+            fixeler->ci++;
+        break;
 
-        case 5:
-            if(color.g > 0)
-                color.g--;
-            else
-                fixeler->ci = 0;
-            break;
+    case 5:
+        if (color.g > 0)
+            color.g--;
+        else
+            fixeler->ci = 0;
+        break;
     }
 
     color_rb.red   = color.r << 8;
@@ -152,7 +153,7 @@ static gboolean fixeler_timeout_rb(Fixeler * fixeler)
     return fixeler->running;
 }
 
-static void fixeler_timeout_done(Fixeler * fixeler)
+static void fixeler_timeout_done(Fixeler *fixeler)
 {
     gtk_widget_set_sensitive(fixeler->start,    TRUE);
     gtk_widget_set_sensitive(fixeler->timeoutw, TRUE);
@@ -160,7 +161,7 @@ static void fixeler_timeout_done(Fixeler * fixeler)
     fixeler->source = NULL;
 }
 
-static void fixeler_start(GtkToolButton * widget, Fixeler * fixeler)
+static void fixeler_start(GtkToolButton *widget, Fixeler *fixeler)
 {
     GSourceFunc func;
 
@@ -171,73 +172,76 @@ static void fixeler_start(GtkToolButton * widget, Fixeler * fixeler)
 
     fixeler->running = TRUE;
 
-    switch(fixeler->mode) {
-        case 0:
-            func = (GSourceFunc) fixeler_timeout_rgb;
-            break;
+    switch (fixeler->mode) {
+    case 0:
+        func = (GSourceFunc) fixeler_timeout_rgb;
+        break;
 
-        case 1:
-            func = (GSourceFunc) fixeler_timeout_bw;
-            break;
+    case 1:
+        func = (GSourceFunc) fixeler_timeout_bw;
+        break;
 
-        case 2:
-            func = (GSourceFunc) fixeler_timeout_rb;
-            break;
+    case 2:
+        func = (GSourceFunc) fixeler_timeout_rb;
+        break;
 
-        default:
-            g_return_if_reached();
+    default:
+        g_return_if_reached();
     }
 
-    if(fixeler->source != NULL)
+    if (fixeler->source != NULL)
         g_source_destroy(fixeler->source);
 
     fixeler->source = g_timeout_source_new(fixeler->timeout);
     g_source_set_callback(fixeler->source, func, fixeler,
-        (GDestroyNotify) fixeler_timeout_done);
+                          (GDestroyNotify) fixeler_timeout_done);
     g_source_attach(fixeler->source, NULL);
 }
 
-static void fixeler_stop(GtkToolButton * widget, Fixeler * fixeler)
+static void fixeler_stop(GtkToolButton *widget, Fixeler *fixeler)
 {
-    if(fixeler->source != NULL)
+    if (fixeler->source != NULL)
         g_source_destroy(fixeler->source);
 
     gtk_widget_set_sensitive(fixeler->stop, FALSE);
     fixeler->running = FALSE;
 }
 
-static void fixeler_decorate(GtkToggleButton * widget, Fixeler * fixeler)
+static void fixeler_decorate(GtkToggleButton *widget, Fixeler *fixeler)
 {
     gtk_window_set_decorated(GTK_WINDOW(fixeler->window),
-        !gtk_toggle_button_get_active(widget));
+                             !gtk_toggle_button_get_active(widget));
 }
 
-static void fixeler_fullscreen(GtkToggleButton * widget, Fixeler * fixeler)
+static void fixeler_fullscreen(GtkToggleButton *widget, Fixeler *fixeler)
 {
-    if(gtk_toggle_button_get_active(widget))
+    if (gtk_toggle_button_get_active(widget))
         gtk_window_fullscreen(GTK_WINDOW(fixeler->window));
     else
         gtk_window_unfullscreen(GTK_WINDOW(fixeler->window));
 }
 
-static void fixeler_mode_changed(GtkComboBox * widget, Fixeler * fixeler)
+static void fixeler_mode_changed(GtkComboBox *widget, Fixeler *fixeler)
 {
     fixeler->mode = gtk_combo_box_get_active(widget);
 
-    if(fixeler->mode < 0)
+    if (fixeler->mode < 0)
         fixeler->mode = 0;
 }
 
-static void fixeler_timeout_changed(GtkSpinButton * widget, Fixeler * fixeler)
+static void fixeler_timeout_changed(GtkSpinButton *widget, Fixeler *fixeler)
 {
     fixeler->timeout = gtk_spin_button_get_value_as_int(widget);
 }
 
-GtkWidget * fixeler_toolbar(Fixeler * fixeler)
+GtkWidget *fixeler_toolbar(Fixeler *fixeler)
 {
-    GtkWidget * toolbar, * widget, * image;
-    GtkComboBoxText * combo;
-    GtkToolItem * item;
+    GtkComboBoxText *combo;
+    GtkToolItem     *item;
+
+    GtkWidget *toolbar;
+    GtkWidget *widget;
+    GtkWidget *image;
 
     toolbar = gtk_toolbar_new();
 
@@ -265,8 +269,7 @@ GtkWidget * fixeler_toolbar(Fixeler * fixeler)
     widget = gtk_toggle_button_new();
     gtk_widget_set_tooltip_text(widget, _("Hide/show window decor"));
     gtk_container_add(GTK_CONTAINER(widget), image);
-    g_signal_connect(widget, "toggled",
-        G_CALLBACK(fixeler_decorate), fixeler);
+    g_signal_connect(widget, "toggled", G_CALLBACK(fixeler_decorate), fixeler);
 
     item = gtk_tool_item_new();
     gtk_container_add(GTK_CONTAINER(item), widget);
@@ -277,8 +280,8 @@ GtkWidget * fixeler_toolbar(Fixeler * fixeler)
     widget = gtk_toggle_button_new();
     gtk_widget_set_tooltip_text(widget, _("Fullscreen"));
     gtk_container_add(GTK_CONTAINER(widget), image);
-    g_signal_connect(widget, "toggled",
-        G_CALLBACK(fixeler_fullscreen), fixeler);
+    g_signal_connect(widget, "toggled", G_CALLBACK(fixeler_fullscreen),
+                     fixeler);
 
     item = gtk_tool_item_new();
     gtk_container_add(GTK_CONTAINER(item), widget);
@@ -300,7 +303,7 @@ GtkWidget * fixeler_toolbar(Fixeler * fixeler)
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(widget), 100);
     gtk_widget_set_tooltip_text(widget, _("Timeout (ms)"));
     g_signal_connect(widget, "value-changed",
-        G_CALLBACK(fixeler_timeout_changed), fixeler);
+                     G_CALLBACK(fixeler_timeout_changed), fixeler);
     fixeler->timeoutw = widget;
 
     item = gtk_tool_item_new();
@@ -318,8 +321,8 @@ GtkWidget * fixeler_toolbar(Fixeler * fixeler)
 
     gtk_combo_box_set_active(GTK_COMBO_BOX(combo), fixeler->mode);
     gtk_widget_set_tooltip_text(widget, _("Fixeler mode"));
-    g_signal_connect(combo, "changed",
-        G_CALLBACK(fixeler_mode_changed), fixeler);
+    g_signal_connect(combo, "changed", G_CALLBACK(fixeler_mode_changed),
+                     fixeler);
     fixeler->modew = widget;
 
     item = gtk_tool_item_new();
@@ -332,43 +335,43 @@ GtkWidget * fixeler_toolbar(Fixeler * fixeler)
     return toolbar;
 }
 
-static gboolean fixeler_ui_timeout(Fixeler * fixeler)
+static gboolean fixeler_ui_timeout(Fixeler *fixeler)
 {
     gtk_widget_hide(fixeler->toolbar);
     fixeler->ui_hidden = TRUE;
     fixeler->ui_source = NULL;
-
     return FALSE;
 }
 
-static gboolean fixeler_window_motion(GtkWidget * widget,
-                    GdkEvent * event, Fixeler * fixeler)
+static gboolean fixeler_window_motion(GtkWidget *widget, GdkEvent *event,
+                                      Fixeler *fixeler)
 {
-    if(fixeler->ui_hidden) {
+    if (fixeler->ui_hidden) {
         gtk_widget_show(fixeler->toolbar);
         fixeler->ui_hidden = FALSE;
         return FALSE;
     }
 
-    if(fixeler->ui_source != NULL) {
+    if (fixeler->ui_source != NULL) {
         g_source_destroy(fixeler->ui_source);
         fixeler->ui_source = NULL;
     }
 
-    if(!fixeler->running)
+    if (!fixeler->running)
         return FALSE;
 
     fixeler->ui_source = g_timeout_source_new(FIXELER_UI_TIMEOUT);
-    g_source_set_callback(fixeler->ui_source,
-        (GSourceFunc) fixeler_ui_timeout, fixeler, NULL);
+    g_source_set_callback(fixeler->ui_source, (GSourceFunc) fixeler_ui_timeout,
+                          fixeler, NULL);
     g_source_attach(fixeler->ui_source, NULL);
-
     return FALSE;
 }
 
-void fixeler_window(Fixeler * fixeler)
+void fixeler_window(Fixeler *fixeler)
 {
-    GtkWidget * window, * vbox, * widget;
+    GtkWidget *window;
+    GtkWidget *vbox;
+    GtkWidget *widget;
 
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     vbox   = gtk_vbox_new(FALSE, 0);
@@ -382,37 +385,35 @@ void fixeler_window(Fixeler * fixeler)
     gtk_box_pack_start(GTK_BOX(vbox), widget, FALSE, FALSE, 0);
 
     g_signal_connect(window, "motion-notify-event",
-        G_CALLBACK(fixeler_window_motion), fixeler);
+                     G_CALLBACK(fixeler_window_motion), fixeler);
     g_signal_connect(window, "destroy",
-        G_CALLBACK(gtk_main_quit), NULL);
+                     G_CALLBACK(gtk_main_quit), NULL);
 
     gtk_widget_show_all(window);
     fixeler->window = window;
 }
 
-int main(gint argc, gchar * argv[])
+int main(gint argc, gchar *argv[])
 {
-    Fixeler * fixeler;
-    GTimeVal tv;
+    Fixeler  *fixeler;
+    GTimeVal  tv;
 
     gtk_init(&argc, &argv);
     g_get_current_time(&tv);
 
     fixeler = g_slice_new0(Fixeler);
 
-    fixeler->running    = FALSE;
-    fixeler->source     = NULL;
-    fixeler->timeout    = 100;
-    fixeler->mode       = 0;
-    fixeler->ui_hidden  = FALSE;
-    fixeler->ui_source  = NULL;
-    fixeler->ci         = 0;
+    fixeler->running   = FALSE;
+    fixeler->source    = NULL;
+    fixeler->timeout   = 100;
+    fixeler->mode      = 0;
+    fixeler->ui_hidden = FALSE;
+    fixeler->ui_source = NULL;
+    fixeler->ci        = 0;
 
     fixeler_window(fixeler);
-
     gtk_main();
 
     g_slice_free(Fixeler, fixeler);
-
     return 0;
 }
