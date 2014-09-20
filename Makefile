@@ -1,18 +1,22 @@
-PRGNAM=fixeler
+PRGNAM = fixeler
+PRGCNF = glib-2.0 gtk+-2.0
 
-CFLAGS=-Wall -O2 $(shell pkg-config --cflags glib-2.0 gtk+-2.0)
-LDFLAGS=$(shell pkg-config --libs glib-2.0 gtk+-2.0)
+CFLAGS  = -Wall -O0 -g
+LDFLAGS = -Wl,-O0
 
-SRC=fixeler.c
-OBJ=$(SRC:.c=.o)
+PRGCFLAGS  = $(CFLAGS)  $(shell pkg-config --cflags $(PRGCNF))
+PRGLDFLAGS = $(LDFLAGS) $(shell pkg-config --libs   $(PRGCNF))
 
-all: fixiler
+PRGSRCS = fixeler.c
+PRGOBJS = $(PRGSRCS:.c=.o)
 
-fixiler: $(OBJ)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJ) -o $(PRGNAM)
+all: $(PRGNAM)
+
+$(PRGNAM): $(PRGOBJS)
+	$(CC) $(PRGLDFLAGS) -o $(PRGNAM) $(PRGOBJS)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(PRGCFLAGS) -o $@ -c $<
 
 clean:
-	$(RM) $(OBJ) $(PRGNAM)
+	$(RM) $(PRGNAM) $(PRGOBJS)
