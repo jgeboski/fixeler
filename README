@@ -2,10 +2,10 @@ Fixeler is a simple GTK based pixel "fixer" for an attempt at getting
 rid of "stuck" pixels.
 
 Features:
-    - Modes
-        - Red, Green, Blue
-        - Black, White
-        - Rainbowing
-    - Custom timeout rates between colors
-    - Fullscreen
-    - Borderless window
+  - Differing Modes:
+    - Red, Green, Blue
+    - Black, White
+    - Rainbowing
+  - Custom timeout rates between colors
+  - Fullscreening (optional)
+  - Borderless windowing (optional)
