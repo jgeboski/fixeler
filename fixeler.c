@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 James Geboski <jgeboski@gmail.com>
+ * Copyright 2011-2014 James Geboski <jgeboski@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,32 +18,23 @@
 #include <gdk/gdk.h>
 #include <glib.h>
 #include <glib/gi18n.h>
-
 #include <gtk/gtk.h>
+#include <string.h>
 
 #define FIXELER_UI_TIMEOUT  3000
 
-typedef struct _Color   Color;
 typedef struct _Fixeler Fixeler;
-
-struct _Color
-{
-    guint8 r;
-    guint8 g;
-    guint8 b;
-};
 
 struct _Fixeler
 {
-    GSource  *source;
-    gboolean  running;
-    guint     timeout;
-    gint      mode;
+    GSource   *source;
+    gboolean   running;
+    guint      timeout;
+    gint       mode;
+    GdkColor   color;
 
-    gboolean  ui_hidden;
-    GSource  *ui_source;
-
-    gint ci;
+    gboolean   ui_hidden;
+    GSource   *ui_source;
 
     GtkWidget *window;
     GtkWidget *toolbar;
@@ -55,101 +46,71 @@ struct _Fixeler
     GtkWidget *stop;
 };
 
-static GdkColor color_rgb[3] = {
-    {0, 0xffff, 0, 0},
-    {0, 0, 0xffff, 0},
-    {0, 0, 0, 0xffff}
-};
+static void fixeler_color_get(Fixeler *fixeler, guint8 *r, guint8 *g, guint8 *b)
+{
+    *r = fixeler->color.red   >> 8;
+    *g = fixeler->color.green >> 8;
+    *b = fixeler->color.blue  >> 8;
+}
 
-static GdkColor color_bw[2] = {
-    {0, 0, 0, 0},
-    {0xffff, 0xffff, 0xffff, 0xffff}
-};
-
-static GdkColor color_rb;
-static Color    color;
+static void fixeler_color_set(Fixeler *fixeler, guint8 r, guint8 g, guint8 b)
+{
+    fixeler->color.pixel = (r << 16) | (g << 8) | b;
+    fixeler->color.red   = r << 8;
+    fixeler->color.green = g << 8;
+    fixeler->color.blue  = b << 8;
+}
 
 static gboolean fixeler_timeout_rgb(Fixeler * fixeler)
 {
-    if (fixeler->ci >= 3)
-        fixeler->ci = 0;
+    if (fixeler->color.red != 0x00)
+        fixeler_color_set(fixeler, 0, 255, 0);
+    else if (fixeler->color.green != 0x00)
+        fixeler_color_set(fixeler, 0, 0, 255);
+    else if (fixeler->color.blue != 0x00)
+        fixeler_color_set(fixeler, 255, 0, 0);
+    else
+        fixeler_color_set(fixeler, 255, 0, 0);
 
-    gtk_widget_modify_bg(fixeler->window, GTK_STATE_NORMAL,
-                         &color_rgb[fixeler->ci]);
-
-    fixeler->ci++;
+    gtk_widget_modify_bg(fixeler->window, GTK_STATE_NORMAL, &fixeler->color);
     return fixeler->running;
 }
 
-static gboolean fixeler_timeout_bw(Fixeler * fixeler)
+static gboolean fixeler_timeout_bw(Fixeler *fixeler)
 {
-    if (fixeler->ci >= 2)
-        fixeler->ci = 0;
+    if (fixeler->color.red == 0x00)
+        fixeler_color_set(fixeler, 255, 255, 255);
+    else
+        fixeler_color_set(fixeler, 0, 0, 0);
 
-    gtk_widget_modify_bg(fixeler->window, GTK_STATE_NORMAL,
-                         &color_bw[fixeler->ci]);
-
-    fixeler->ci++;
+    gtk_widget_modify_bg(fixeler->window, GTK_STATE_NORMAL, &fixeler->color);
     return fixeler->running;
 }
 
 static gboolean fixeler_timeout_rb(Fixeler *fixeler)
 {
-    if (!fixeler->ci) {
-        color_rb.red   = 255;
-        color_rb.green = 0;
-        color_rb.blue  = 0;
-    }
+    guint8 b;
+    guint8 g;
+    guint8 r;
 
-    switch (fixeler->ci) {
-    case 0:
-        if (color.b < 255)
-            color.b++;
-        else
-            fixeler->ci++;
-        break;
+    fixeler_color_get(fixeler, &r, &g, &b);
 
-    case 1:
-        if (color.r > 0)
-            color.r--;
-        else
-            fixeler->ci++;
-        break;
+    if ((r == 0xFF) && (g != 0xFF) && (b == 0x00))
+        fixeler_color_set(fixeler, r, g + 1, b);
+    else if ((r != 0x00) && (g == 0xFF) && (b == 0x00))
+        fixeler_color_set(fixeler, r - 1, g, b);
+    else if ((r == 0x00) && (g == 0xFF) && (b != 0xFF))
+        fixeler_color_set(fixeler, r, g, b + 1);
+    else if ((r == 0x00) && (g != 0x00) && (b == 0xFF))
+        fixeler_color_set(fixeler, r, g - 1, b);
+    else if ((r != 0xFF) && (g == 0x00) && (b == 0xFF))
+        fixeler_color_set(fixeler, r + 1, g, b);
+    else if ((r == 0xFF) && (g == 0x00) && (b != 0x00))
+        fixeler_color_set(fixeler, r, g, b - 1);
+    else
+        fixeler_color_set(fixeler, r + 1, 0, 0);
 
-     case 2:
-        if (color.g < 255)
-            color.g++;
-        else
-            fixeler->ci++;
-        break;
-
-    case 3:
-        if (color.b > 0)
-            color.b--;
-        else
-            fixeler->ci++;
-        break;
-
-    case 4:
-        if (color.r < 255)
-            color.r++;
-        else
-            fixeler->ci++;
-        break;
-
-    case 5:
-        if (color.g > 0)
-            color.g--;
-        else
-            fixeler->ci = 0;
-        break;
-    }
-
-    color_rb.red   = color.r << 8;
-    color_rb.green = color.g << 8;
-    color_rb.blue  = color.b << 8;
-
-    gtk_widget_modify_bg(fixeler->window, GTK_STATE_NORMAL, &color_rb);
+    gtk_widget_modify_bg(fixeler->window, GTK_STATE_NORMAL, &fixeler->color);
     return fixeler->running;
 }
 
@@ -170,27 +131,21 @@ static void fixeler_start(GtkToolButton *widget, Fixeler *fixeler)
     gtk_widget_set_sensitive(fixeler->timeoutw, FALSE);
     gtk_widget_set_sensitive(fixeler->modew,    FALSE);
 
-    fixeler->running = TRUE;
-
     switch (fixeler->mode) {
-    case 0:
-        func = (GSourceFunc) fixeler_timeout_rgb;
-        break;
-
-    case 1:
-        func = (GSourceFunc) fixeler_timeout_bw;
-        break;
-
-    case 2:
-        func = (GSourceFunc) fixeler_timeout_rb;
-        break;
+    case 0: func = (GSourceFunc) fixeler_timeout_rgb; break;
+    case 1: func = (GSourceFunc) fixeler_timeout_bw;  break;
+    case 2: func = (GSourceFunc) fixeler_timeout_rb;  break;
 
     default:
-        g_return_if_reached();
+        g_warn_if_reached();
+        return;
     }
 
     if (fixeler->source != NULL)
         g_source_destroy(fixeler->source);
+
+    fixeler->running = TRUE;
+    func(fixeler);
 
     fixeler->source = g_timeout_source_new(fixeler->timeout);
     g_source_set_callback(fixeler->source, func, fixeler,
@@ -215,10 +170,12 @@ static void fixeler_decorate(GtkToggleButton *widget, Fixeler *fixeler)
 
 static void fixeler_fullscreen(GtkToggleButton *widget, Fixeler *fixeler)
 {
-    if (gtk_toggle_button_get_active(widget))
+    if (gtk_toggle_button_get_active(widget)) {
         gtk_window_fullscreen(GTK_WINDOW(fixeler->window));
-    else
-        gtk_window_unfullscreen(GTK_WINDOW(fixeler->window));
+        return;
+    }
+
+    gtk_window_unfullscreen(GTK_WINDOW(fixeler->window));
 }
 
 static void fixeler_mode_changed(GtkComboBox *widget, Fixeler *fixeler)
@@ -399,6 +356,7 @@ int main(gint argc, gchar *argv[])
 
     gtk_init(&argc, &argv);
     fixeler = g_slice_new0(Fixeler);
+    memset(&fixeler->color, 0, sizeof fixeler->color);
 
     fixeler->running   = FALSE;
     fixeler->source    = NULL;
@@ -406,7 +364,6 @@ int main(gint argc, gchar *argv[])
     fixeler->mode      = 0;
     fixeler->ui_hidden = FALSE;
     fixeler->ui_source = NULL;
-    fixeler->ci        = 0;
 
     fixeler_window(fixeler);
     gtk_main();
